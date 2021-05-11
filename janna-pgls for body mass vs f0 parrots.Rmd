@@ -1,0 +1,191 @@
+---
+title: "janna-pgls"
+output: html_document
+---
+
+Load tree.
+
+```{r}
+library(ape)
+library(phytools)
+library(tidyverse)
+
+#tree and data
+treeparrot<-read.nexus("ptree2")
+
+```
+
+Load body mass.
+
+```{r}
+Body_mass <- read.csv(("C:/Users/JSG-BS05V2/Desktop/Parrot Vocalization/data/csv/dunning_part1_measures.csv"))
+
+Body_mass <- plyr::ddply(
+  Body_mass,
+  plyr::.(Species.name),
+  function(i) {
+    data.frame(
+      mass_mean= mean(i$mean,na.rm = T)
+    )
+  })
+library(tidyverse)
+
+Body_mass <- rename(Body_mass,Species= Species.name) 
+Body_mass <- mutate(Body_mass, Species= str_replace(Species, " ", "_"))
+extraparrot <- read.csv("unique parrots.csv")
+Body_mass <- bind_rows(Body_mass,extraparrot) %>%
+  dplyr::select(-c(notes, reference))
+```
+
+Load fundamental frequencies and merge with body mass.
+
+```{r}
+parrotdata <- read.table("formatparrotforphy.txt",header = T)
+parrotdata <- left_join(parrotdata, Body_mass)
+```
+
+Combine data and tree.
+
+```{r}
+library(caper)
+newparrottree<-drop.tip(treeparrot, setdiff(treeparrot$tip.label, parrotdata$Species))
+plotTree(newparrottree)
+
+setdiff (parrotdata$Species,newparrottree$tip.label)
+
+compdata<-comparative.data(newparrottree, parrotdata, names.col="Species")
+```
+
+Phylogenetic regression.
+```{r}
+
+```
+
+```{r}
+
+
+PGLS<-pgls(log(f0_mean) ~ log(mass_mean), data=compdata)
+summary(PGLS)
+```
+
+Plot of phylogenetic regression.
+
+```{r}
+
+
+PGLS<-pgls(log(f0_mean) ~ log(mass_mean), data=compdata)
+summary(PGLS)
+```
+
+```{r}
+library(ggplot2)
+library(plotly)
+# The plot:
+p <- ggplot(parrotdata, aes(log(mass_mean), log(f0_mean),
+                            color= Species
+                            )) +
+  geom_point(size=5) +
+  # geom_text(aes(label=Species),hjust=-0.1, vjust=0.4) +
+  xlab("ln Body mass (g)") +
+  ylab(" ln Fundamental frequency (Hz)") +
+  geom_abline(
+    intercept=PGLS$model$coef[1],
+    slope=PGLS$model$coef[2],
+    colour="red",
+    size=1.3
+  )
+ggplotly(p)
+```
+
+
+```{r}
+
+PGLS<-pgls(log(f0_max) ~ log(mass_mean), data=compdata)
+summary(PGLS)
+
+library(ggplot2)
+library(plotly)
+# The plot:
+p <- ggplot(parrotdata, aes(log(mass_mean), log(f0_max),
+                            color= Species
+                            )) +
+  geom_point(size=5) +
+  # geom_text(aes(label=Species),hjust=-0.1, vjust=0.4) +
+  xlab("ln Body mass (g)") +
+  ylab("ln Maximum Fundamental frequency (Hz)") +
+  geom_abline(
+    intercept=PGLS$model$coef[1],
+    slope=PGLS$model$coef[2],
+    colour="red",
+    size=1.3
+  )
+ggplotly(p
+  )
+```
+```{r}
+
+PGLS<-pgls(log(f0_min) ~ log(mass_mean), data=compdata)
+summary(PGLS)
+
+library(ggplot2)
+library(plotly)
+# The plot:
+p <- ggplot(parrotdata, aes(log(mass_mean), log(f0_min),
+                            color= Species
+                            )) +
+  geom_point(size=5) +
+  # geom_text(aes(label=Species),hjust=-0.1, vjust=0.4) +
+  xlab("ln Body mass (g)") +
+  ylab("ln Minimum Fundamental frequency (Hz)") +
+  geom_abline(
+    intercept=PGLS$model$coef[1],
+    slope=PGLS$model$coef[2],
+    colour="red",
+    size=1.3
+  )
+ggplotly(p
+  )
+```
+```{r}
+# Extract treet from comparative data object
+tree <- compdata$phy
+# Extract mean F0
+f0mean <- compdata$data$f0_mean
+names(f0mean) <- tree$tip.label
+# Fast ancestral reconstruction
+fit <- fastAnc(tree, f0mean)
+# Plot
+obj<-contMap(tree,f0mean,plot=FALSE)
+plot(obj,legend=0.7*max(nodeHeights(tree)),
+    fsize=c(0.7,0.9))
+```
+
+```{r}
+# Extract treet from comparative data object
+tree <- compdata$phy
+# Extract body mass
+mass_mean <- compdata$data$mass_mean
+names(mass_mean) <- tree$tip.label
+# Fast ancestral reconstruction
+fit <- fastAnc(tree, f0mean)
+# Plot
+obj<-contMap(tree,f0mean,plot=FALSE)
+plot(obj,legend=0.7*max(nodeHeights(tree)),
+    fsize=c(0.7,0.9))
+```
+Maximum F0 ancstal staate reconstrction 
+```{r}
+# Extract treet from comparative data object
+tree <- compdata$phy
+# Extract max F0
+f0_max <- compdata$data$f0_max
+names(f0_max) <- tree$tip.label
+library(phytools)
+
+# Fast ancestral reconstruction
+fit <- fastAnc(tree,f0_max)
+# Plot
+obj<-contMap(tree,f0_max,plot=FALSE)
+plot(obj,legend=0.7*max(nodeHeights(tree)),
+    fsize=c(0.7,0.9))
+```
